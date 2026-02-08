@@ -5,6 +5,8 @@ import {
   createInitialState,
   resetRun,
   setSettings,
+  startRun,
+  togglePause,
   tick,
   type Difficulty,
   type Settings,
@@ -253,15 +255,21 @@ export default function InvadersApp() {
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <button
-                    onClick={() => {
+                    onClick={() =>
                       setS((prev) => {
                         const n = structuredClone(prev) as State;
-                        // start via firing once
-                        inputRef.current.fire = true;
+                        if (n.phase === "paused") {
+                          togglePause(n);
+                        } else if (n.phase === "playing") {
+                          // quick tap-fire
+                          inputRef.current.fire = true;
+                          setTimeout(() => (inputRef.current.fire = false), 60);
+                        } else {
+                          startRun(n);
+                        }
                         return n;
-                      });
-                      setTimeout(() => (inputRef.current.fire = false), 60);
-                    }}
+                      })
+                    }
                     className="rounded-2xl bg-gradient-to-br from-cyan-400 via-fuchsia-500 to-emerald-400 px-3 py-2 text-xs font-semibold text-black hover:brightness-110"
                   >
                     {s.phase === "paused" ? "Resume" : s.phase === "playing" ? "Fire" : "Start"}
