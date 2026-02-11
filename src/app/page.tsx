@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type MoodKey = "energy" | "warmth" | "chaos" | "mystery";
 
@@ -52,6 +52,15 @@ export default function Home() {
     mystery: 0.5,
   });
   const [copied, setCopied] = useState<string | null>(null);
+  const [recents, setRecents] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
+
+  useEffect(() => {
+    const savedRecents = localStorage.getItem("emoji-recents");
+    const savedFavorites = localStorage.getItem("emoji-favorites");
+    if (savedRecents) setRecents(JSON.parse(savedRecents));
+    if (savedFavorites) setFavorites(JSON.parse(savedFavorites));
+  }, []);
 
   const ranked = useMemo(() => {
     return seeds
@@ -74,10 +83,24 @@ export default function Home() {
     try {
       await navigator.clipboard.writeText(emoji);
       setCopied(emoji);
+      setRecents((prev) => {
+        const next = [emoji, ...prev.filter((r) => r !== emoji)].slice(0, 8);
+        localStorage.setItem("emoji-recents", JSON.stringify(next));
+        return next;
+      });
       setTimeout(() => setCopied(null), 1200);
     } catch {
       setCopied(null);
     }
+  };
+
+  const toggleFavorite = (emoji: string) => {
+    setFavorites((prev) => {
+      const exists = prev.includes(emoji);
+      const next = exists ? prev.filter((f) => f !== emoji) : [emoji, ...prev].slice(0, 16);
+      localStorage.setItem("emoji-favorites", JSON.stringify(next));
+      return next;
+    });
   };
 
   return (
@@ -122,17 +145,21 @@ export default function Home() {
 
           <div className="relative z-10 mx-auto mt-10 h-[22rem] max-w-3xl">
             {top.map((item, idx) => (
-              <button
-                key={item.emoji}
-                onClick={() => copy(item.emoji)}
-                className={`orb orb-${idx + 1}`}
-                title={`Copy ${item.name}`}
-              >
-                <span className="text-6xl md:text-7xl">{item.emoji}</span>
+              <div key={item.emoji} className={`orb orb-${idx + 1}`}>
+                <button onClick={() => copy(item.emoji)} title={`Copy ${item.name}`}>
+                  <span className="text-6xl md:text-7xl">{item.emoji}</span>
+                </button>
                 <span className="mt-2 text-xs uppercase tracking-widest text-white/80">
                   {item.name} · {Math.round(item.score * 100)}%
                 </span>
-              </button>
+                <button
+                  onClick={() => toggleFavorite(item.emoji)}
+                  className="mt-2 rounded-full border border-white/20 px-2 py-0.5 text-xs"
+                  title="Toggle favorite"
+                >
+                  {favorites.includes(item.emoji) ? "★ saved" : "☆ save"}
+                </button>
+              </div>
             ))}
           </div>
 
@@ -147,6 +174,37 @@ export default function Home() {
                 {item.emoji} <span className="text-white/60">{Math.round(item.score * 100)}%</span>
               </button>
             ))}
+          </div>
+        </section>
+
+        <section className="mb-5 grid gap-3 md:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+            <p className="mb-2 text-xs uppercase tracking-[0.25em] text-indigo-100/70">Favorites</p>
+            <div className="flex min-h-10 flex-wrap gap-2">
+              {favorites.length ? (
+                favorites.map((emoji) => (
+                  <button key={emoji} onClick={() => copy(emoji)} className="rounded-lg bg-white/10 px-2 py-1 text-xl">
+                    {emoji}
+                  </button>
+                ))
+              ) : (
+                <p className="text-sm text-indigo-100/60">Save standout picks from the floating trio.</p>
+              )}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+            <p className="mb-2 text-xs uppercase tracking-[0.25em] text-indigo-100/70">Recent picks</p>
+            <div className="flex min-h-10 flex-wrap gap-2">
+              {recents.length ? (
+                recents.map((emoji, i) => (
+                  <button key={`${emoji}-${i}`} onClick={() => copy(emoji)} className="rounded-lg bg-white/10 px-2 py-1 text-xl">
+                    {emoji}
+                  </button>
+                ))
+              ) : (
+                <p className="text-sm text-indigo-100/60">Your copied emojis appear here.</p>
+              )}
+            </div>
           </div>
         </section>
 
